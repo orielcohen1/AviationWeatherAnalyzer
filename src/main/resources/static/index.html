@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviation Weather Analyzer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #08111f;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .app {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #1a2e4a;
+        }
+
+        .plane-icon { font-size: 2.5rem; line-height: 1; }
+
+        header h1 { font-size: 1.6rem; font-weight: 700; }
+        header p  { color: #4a6080; font-size: 0.85rem; margin-top: 2px; }
+
+        /* ── Search ── */
+        .search-section { margin-bottom: 2rem; }
+
+        .search-box {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 480px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 0.85rem 1.2rem;
+            background: #0f1f35;
+            border: 1px solid #1a3050;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input::placeholder { color: #2a4060; letter-spacing: 1px; }
+        .search-box input:focus { border-color: #3b82f6; }
+
+        .search-box button {
+            padding: 0.85rem 1.6rem;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .search-box button:hover  { background: #1d4ed8; }
+        .search-box button:active { transform: scale(0.97); }
+        .search-box button:disabled { background: #1a3050; cursor: not-allowed; }
+
+        .hint { color: #2a4060; font-size: 0.78rem; margin-top: 0.5rem; }
+
+        /* ── Loading ── */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            padding: 1.5rem 0;
+            color: #4a6080;
+        }
+
+        .spinner {
+            width: 22px; height: 22px;
+            border: 3px solid #1a2e4a;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Error ── */
+        .error-box {
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 8px;
+            padding: 0.9rem 1.2rem;
+            color: #fca5a5;
+            margin-bottom: 1.5rem;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ── Category Banner ── */
+        .category-banner {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.4rem 1.6rem;
+            border-radius: 12px;
+            margin-bottom: 1.25rem;
+            border: 2px solid;
+            flex-wrap: wrap;
+        }
+
+        .cat-vfr  { background: rgba(34,197,94,0.07);   border-color: rgba(34,197,94,0.35);  }
+        .cat-mvfr { background: rgba(96,165,250,0.07);  border-color: rgba(96,165,250,0.35); }
+        .cat-ifr  { background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.35);}
+        .cat-lifr { background: rgba(192,132,252,0.07); border-color: rgba(192,132,252,0.35);}
+
+        .category-badge {
+            font-size: 1.4rem;
+            font-weight: 900;
+            padding: 0.45rem 1.1rem;
+            border-radius: 8px;
+            letter-spacing: 1.5px;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .cat-vfr  .category-badge { background: rgba(34,197,94,0.15);   color: #22c55e; }
+        .cat-mvfr .category-badge { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+        .cat-ifr  .category-badge { background: rgba(248,113,113,0.15); color: #f87171; }
+        .cat-lifr .category-badge { background: rgba(192,132,252,0.15); color: #c084fc; }
+
+        .category-info { flex: 1; min-width: 160px; }
+        .category-info h2 { font-size: 1.15rem; font-weight: 600; margin-bottom: 3px; }
+        .category-info p  { color: #4a6080; font-size: 0.82rem; }
+
+        .airport-tag {
+            font-size: 2rem;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            color: #2a4060;
+            letter-spacing: 2px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: #0f1f35;
+            border: 1px solid #1a2e4a;
+            border-radius: 12px;
+            padding: 1.2rem 1.4rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: #2a4060;
+            margin-bottom: 0.65rem;
+        }
+
+        .metar-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.88rem;
+            color: #7dd3fc;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+
+        /* ── Weather Grid ── */
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .weather-card {
+            background: #0f1f35;
+            border: 1px solid #1a2e4a;
+            border-radius: 12px;
+            padding: 1.1rem 1rem;
+            text-align: center;
+        }
+
+        .wc-icon  { font-size: 1.4rem; margin-bottom: 0.45rem; }
+        .wc-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #2a4060;
+            margin-bottom: 0.45rem;
+        }
+        .wc-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: #e2e8f0;
+            margin-bottom: 0.2rem;
+        }
+        .wc-unit { font-size: 0.72rem; color: #2a4060; min-height: 1em; }
+
+        /* ── NOTAMs ── */
+        .notams-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #64748b;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 260px;
+            overflow-y: auto;
+            line-height: 1.7;
+        }
+
+        .notams-text::-webkit-scrollbar { width: 6px; }
+        .notams-text::-webkit-scrollbar-track { background: #0a1628; }
+        .notams-text::-webkit-scrollbar-thumb { background: #1a3050; border-radius: 3px; }
+
+        /* ── AI Interpretation ── */
+        .ai-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.85rem;
+            padding: 0.55rem 1.1rem;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .ai-btn:hover   { opacity: 0.88; }
+        .ai-btn:active  { transform: scale(0.97); }
+        .ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .ai-panel {
+            margin-top: 1rem;
+            padding: 1rem 1.1rem;
+            background: rgba(124,58,237,0.07);
+            border: 1px solid rgba(124,58,237,0.25);
+            border-radius: 8px;
+        }
+
+        .ai-panel-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #7c3aed;
+            margin-bottom: 0.6rem;
+        }
+
+        .ai-text {
+            font-size: 0.875rem;
+            color: #c4b5fd;
+            line-height: 1.75;
+            white-space: pre-line;
+        }
+
+        .ai-spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            vertical-align: middle;
+        }
+
+        /* ── Wind direction arrow ── */
+        .wind-arrow-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 0.3rem 0;
+        }
+        .wind-arrow {
+            width: 28px; height: 28px;
+            position: relative;
+        }
+        .wind-arrow svg { width: 28px; height: 28px; }
+
+        @media (max-width: 480px) {
+            header h1 { font-size: 1.3rem; }
+            .airport-tag { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+
+    <header>
+        <span class="plane-icon">✈</span>
+        <div>
+            <h1>Aviation Weather Analyzer</h1>
+            <p>Real-time METAR &amp; NOTAM analysis</p>
+        </div>
+    </header>
+
+    <section class="search-section">
+        <div class="search-box">
+            <input id="airportInput" type="text" maxlength="4"
+                   placeholder="ICAO (e.g. LLHA)">
+            <button id="analyzeBtn" onclick="analyze()">Analyze</button>
+        </div>
+        <p class="hint">Enter a 4-letter ICAO airport code and press Analyze or Enter.</p>
+    </section>
+
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <span>Fetching live weather data&hellip;</span>
+    </div>
+
+    <div id="errorBox" class="error-box hidden"></div>
+
+    <div id="results" class="hidden">
+
+        <!-- Category banner -->
+        <div id="catBanner" class="category-banner cat-vfr">
+            <div id="catBadge" class="category-badge">VFR</div>
+            <div class="category-info">
+                <h2 id="catTitle">Visual Flight Rules</h2>
+                <p  id="catDesc">Clear conditions suitable for visual flight.</p>
+            </div>
+            <div id="airportTag" class="airport-tag">----</div>
+        </div>
+
+        <!-- Raw METAR -->
+        <div class="card">
+            <div class="card-label">Raw METAR</div>
+            <pre id="rawMetar" class="metar-text"></pre>
+        </div>
+
+        <!-- Weather parameters -->
+        <div class="weather-grid">
+            <div class="weather-card">
+                <div class="wc-icon">🧭</div>
+                <div class="wc-label">Wind</div>
+                <div class="wind-arrow-wrap">
+                    <svg id="windArrow" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="14" y1="22" x2="14" y2="6" stroke="#60a5fa" stroke-width="2.5"
+                              stroke-linecap="round"/>
+                        <polygon points="14,4 10.5,11 17.5,11" fill="#60a5fa"/>
+                    </svg>
+                </div>
+                <div class="wc-value" id="windValue">---</div>
+                <div class="wc-unit"  id="windUnit">kt</div>
+            </div>
+            <div class="weather-card">
+                <div class="wc-icon">👁</div>
+                <div class="wc-label">Visibility</div>
+                <div class="wc-value" id="visValue">---</div>
+                <div class="wc-unit"  id="visUnit">km</div>
+            </div>
+            <div class="weather-card">
+                <div class="wc-icon">☁</div>
+                <div class="wc-label">Ceiling</div>
+                <div class="wc-value" id="ceilingValue">---</div>
+                <div class="wc-unit"  id="ceilingUnit">ft</div>
+            </div>
+            <div class="weather-card">
+                <div class="wc-icon">🌡</div>
+                <div class="wc-label">Temp / Dew</div>
+                <div class="wc-value" id="tempValue">---</div>
+                <div class="wc-unit">°C</div>
+            </div>
+            <div class="weather-card">
+                <div class="wc-icon">⏱</div>
+                <div class="wc-label">QNH</div>
+                <div class="wc-value" id="qnhValue">---</div>
+                <div class="wc-unit">hPa</div>
+            </div>
+        </div>
+
+        <!-- NOTAMs -->
+        <div class="card">
+            <div class="card-label">NOTAMs — Raw Data</div>
+            <pre id="notamsText" class="notams-text"></pre>
+
+            <button id="aiBtn" class="ai-btn" onclick="interpretNotams()">
+                ✦ Interpret with AI
+            </button>
+
+            <div id="aiPanel" class="ai-panel hidden">
+                <div class="ai-panel-label">✦ AI Pilot Briefing</div>
+                <div id="aiText" class="ai-text"></div>
+            </div>
+        </div>
+
+    </div><!-- /results -->
+</div><!-- /app -->
+
+<script>
+    let currentIcao = '';
+
+    const CAT = {
+        VFR:  { cls: 'cat-vfr',  title: 'Visual Flight Rules',          desc: 'Clear conditions suitable for visual flight.' },
+        MVFR: { cls: 'cat-mvfr', title: 'Marginal Visual Flight Rules',  desc: 'Marginal conditions — caution advised.' },
+        IFR:  { cls: 'cat-ifr',  title: 'Instrument Flight Rules',       desc: 'Low visibility — instruments required.' },
+        LIFR: { cls: 'cat-lifr', title: 'Low Instrument Flight Rules',   desc: 'Extreme conditions — below minimums.' }
+    };
+
+    const $ = id => document.getElementById(id);
+
+    async function analyze() {
+        const raw = $('airportInput').value.trim();
+        if (!raw) return;
+        const icao = raw.toUpperCase();
+
+        currentIcao = icao;
+        $('analyzeBtn').disabled = true;
+        $('aiBtn').disabled = false;
+        hide('aiPanel');
+        $('aiText').textContent = '';
+        show('loading'); hide('errorBox'); hide('results');
+
+        try {
+            const resp = await fetch('/api/analyze?airport=' + encodeURIComponent(icao));
+            const text = await resp.text();
+
+            if (!resp.ok) {
+                showError('Server error: ' + text);
+                return;
+            }
+
+            displayResults(JSON.parse(text), icao);
+        } catch (err) {
+            showError('Network error — is the server running? (' + err.message + ')');
+        } finally {
+            $('analyzeBtn').disabled = false;
+            hide('loading');
+        }
+    }
+
+    function displayResults(data, icao) {
+        const w   = data.weather;
+        const cat = w.category;
+        const cfg = CAT[cat] || CAT.VFR;
+
+        // Category banner
+        const banner = $('catBanner');
+        banner.className = 'category-banner ' + cfg.cls;
+        $('catBadge').textContent = cat;
+        $('catTitle').textContent = cfg.title;
+        $('catDesc').textContent  = cfg.desc;
+        $('airportTag').textContent = icao;
+
+        // Raw METAR
+        $('rawMetar').textContent = w.rawMetar || '—';
+
+        // Wind
+        const spd  = w.windSpeedKnots;
+        const gust = w.windGustKnots;
+        const dir  = w.windDirectionDegrees;
+
+        if (spd === 0) {
+            $('windValue').textContent = 'Calm';
+            $('windUnit').textContent  = '';
+            rotateArrow(0);
+        } else {
+            const dirStr = (dir === 0) ? 'VRB' : String(dir).padStart(3,'0') + '°';
+            $('windValue').textContent = dirStr + ' / ' + spd;
+            $('windUnit').textContent  = gust > 0 ? 'kt  G' + gust + 'kt' : 'kt';
+            rotateArrow(dir);
+        }
+
+        // Visibility
+        if (w.visibilityMeters >= 9999) {
+            $('visValue').textContent = '>10';
+            $('visUnit').textContent  = 'km';
+        } else {
+            $('visValue').textContent = (w.visibilityMeters / 1000).toFixed(1);
+            $('visUnit').textContent  = 'km';
+        }
+
+        // Ceiling
+        if (w.cloudBaseFeet >= 99999) {
+            $('ceilingValue').textContent = 'Clear';
+            $('ceilingUnit').textContent  = '';
+        } else {
+            $('ceilingValue').textContent = w.cloudBaseFeet.toLocaleString();
+            $('ceilingUnit').textContent  = 'ft';
+        }
+
+        // Temp / Dew
+        $('tempValue').textContent = w.temperatureC + ' / ' + w.dewPointC;
+
+        // QNH
+        $('qnhValue').textContent = w.pressureHpa > 0 ? w.pressureHpa : '—';
+
+        // NOTAMs
+        $('notamsText').textContent = (data.notams || '').trim() || 'No active NOTAMs.';
+
+        show('results');
+    }
+
+    async function interpretNotams() {
+        if (!currentIcao) return;
+        const btn = $('aiBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ai-spinner"></span> Asking AI…';
+
+        show('aiPanel');
+        $('aiText').textContent = '';
+
+        try {
+            const resp = await fetch('/api/notams/interpret?airport=' + encodeURIComponent(currentIcao));
+            const text = await resp.text();
+            $('aiText').textContent = text;
+        } catch (err) {
+            $('aiText').textContent = 'Error: ' + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '✦ Interpret with AI';
+        }
+    }
+
+    function rotateArrow(degrees) {
+        $('windArrow').style.transform = 'rotate(' + degrees + 'deg)';
+    }
+
+    function show(id)  { $(id).classList.remove('hidden'); }
+    function hide(id)  { $(id).classList.add('hidden');    }
+
+    function showError(msg) {
+        $('errorBox').textContent = msg;
+        show('errorBox');
+    }
+
+    $('airportInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') analyze();
+    });
+</script>
+</body>
+</html>
