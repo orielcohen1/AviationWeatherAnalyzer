@@ -10,7 +10,9 @@ import java.util.regex.Pattern;
 public class NotamAIAgent {
 
     // הכנס את המפתח שלך בתוך המרכאות
-    private static final String API_KEY = "AQ.Ab8RN6Io2Hn3BEC35XOs3Ns8esnJ3MCB4FRRscwHTw0F_MhzmQ";
+    private static final String API_KEY = System.getenv("GEMINI_API_KEY") != null
+            ? System.getenv("GEMINI_API_KEY")
+            : "AQ.Ab8RN6Io2Hn3BEC35XOs3Ns8esnJ3MCB4FRRscwHTw0F_MhzmQ";
     private static final String[] MODELS = {
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
