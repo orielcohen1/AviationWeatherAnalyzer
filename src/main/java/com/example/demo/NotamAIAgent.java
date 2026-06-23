@@ -1,10 +1,13 @@
 package com.example.demo;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,42 +16,26 @@ public class NotamAIAgent {
     private static final String API_KEY = System.getenv("ANTHROPIC_API_KEY");
     private static final String API_URL  = "https://api.anthropic.com/v1/messages";
     private static final String MODEL    = "claude-haiku-4-5-20251001";
-
-    private static String jsonEscape(String text) {
-        StringBuilder sb = new StringBuilder();
-        for (char c : text.toCharArray()) {
-            switch (c) {
-                case '"'  -> sb.append("\\\"");
-                case '\\' -> sb.append("\\\\");
-                case '\n' -> sb.append("\\n");
-                case '\r' -> sb.append("\\r");
-                case '\t' -> sb.append("\\t");
-                default   -> sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static String callClaude(String prompt) {
         if (API_KEY == null || API_KEY.isBlank()) {
             return "AI interpretation unavailable — ANTHROPIC_API_KEY environment variable is not set.";
         }
 
-        String body = """
-                {
-                  "model": "%s",
-                  "max_tokens": 1024,
-                  "messages": [{"role": "user", "content": "%s"}]
-                }
-                """.formatted(MODEL, jsonEscape(prompt));
-
         try {
+            String body = MAPPER.writeValueAsString(Map.of(
+                    "model", MODEL,
+                    "max_tokens", 1024,
+                    "messages", List.of(Map.of("role", "user", "content", prompt))
+            ));
+
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
-                    .header("Content-Type",     "application/json")
-                    .header("x-api-key",        API_KEY)
-                    .header("anthropic-version","2023-06-01")
+                    .header("Content-Type",      "application/json")
+                    .header("x-api-key",         API_KEY)
+                    .header("anthropic-version", "2023-06-01")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
 
@@ -71,7 +58,7 @@ public class NotamAIAgent {
             if (response.statusCode() == 429)
                 return "AI unavailable — rate limit reached. Try again in a moment.";
 
-            return "AI unavailable (HTTP " + response.statusCode() + ").";
+            return "AI unavailable (HTTP " + response.statusCode() + "): " + response.body();
 
         } catch (Exception e) {
             return "Error contacting AI: " + e.getMessage();
