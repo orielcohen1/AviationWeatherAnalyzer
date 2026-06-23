@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
@@ -8,19 +9,17 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class NotamAIAgent {
 
-    private static final String API_KEY = System.getenv("ANTHROPIC_API_KEY");
-    private static final String API_URL  = "https://api.anthropic.com/v1/messages";
-    private static final String MODEL    = "claude-haiku-4-5-20251001";
+    private static final String API_KEY = System.getenv("GROQ_API_KEY");
+    private static final String API_URL  = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String MODEL    = "llama-3.1-8b-instant";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static String callClaude(String prompt) {
+    private static String callGroq(String prompt) {
         if (API_KEY == null || API_KEY.isBlank()) {
-            return "AI interpretation unavailable — ANTHROPIC_API_KEY environment variable is not set.";
+            return "AI interpretation unavailable — GROQ_API_KEY environment variable is not set.";
         }
 
         try {
@@ -33,28 +32,20 @@ public class NotamAIAgent {
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
-                    .header("Content-Type",      "application/json")
-                    .header("x-api-key",         API_KEY)
-                    .header("anthropic-version", "2023-06-01")
+                    .header("Content-Type",  "application/json")
+                    .header("Authorization", "Bearer " + API_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                Matcher m = Pattern.compile("\"text\":\\s*\"(.*?)\"(?=\\s*[\\},])", Pattern.DOTALL)
-                        .matcher(response.body());
-                if (m.find()) {
-                    return m.group(1)
-                            .replace("\\n", "\n")
-                            .replace("\\\"", "\"")
-                            .replace("\\\\", "\\")
-                            .trim();
-                }
+                JsonNode root = MAPPER.readTree(response.body());
+                return root.path("choices").get(0).path("message").path("content").asText().trim();
             }
 
             if (response.statusCode() == 401)
-                return "AI unavailable — API key invalid or not authorized.";
+                return "AI unavailable — Groq API key invalid or not authorized.";
             if (response.statusCode() == 429)
                 return "AI unavailable — rate limit reached. Try again in a moment.";
 
@@ -76,7 +67,7 @@ public class NotamAIAgent {
                 + "then WARNINGS, then INFO. One clear sentence per NOTAM. "
                 + "If there are no significant impacts, say so.\n\nRAW NOTAMS:\n" + rawNotams;
 
-        return callClaude(prompt);
+        return callGroq(prompt);
     }
 
     public static String interpretRoute(String from, String to,
@@ -94,7 +85,7 @@ public class NotamAIAgent {
                 + "One sentence per NOTAM. If an airport has no issues, say so briefly.\n\n"
                 + "RAW NOTAMS:\n" + rawNotams;
 
-        return callClaude(prompt);
+        return callGroq(prompt);
     }
 
     public static Notam analyzeNotam(String notamId, String rawNotam) {
@@ -103,7 +94,7 @@ public class NotamAIAgent {
                 + "RAW NOTAM: " + rawNotam;
 
         try {
-            String result = callClaude(prompt);
+            String result = callGroq(prompt);
             if (result == null || !result.contains("|")) return null;
             String[] parts = result.trim().split("\\|");
             if (parts.length < 2) return null;
