@@ -47,7 +47,7 @@ public class NotamAIAgent {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
                     .header("Content-Type",     "application/json")
-                    .header("x-api-key",        API_KEY)
+                    .header("Authorization",    "Bearer " + API_KEY)
                     .header("anthropic-version","2023-06-01")
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
