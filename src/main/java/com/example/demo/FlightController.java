@@ -11,6 +11,12 @@ import java.util.List;
 @RequestMapping("/api")
 public class FlightController {
 
+    @GetMapping("/debug/env")
+    public ResponseEntity<String> debugEnv() {
+        String key = System.getenv("ANTHROPIC_API_KEY");
+        return ResponseEntity.ok("ANTHROPIC_API_KEY: " + (key != null ? "SET (length=" + key.length() + ")" : "NOT SET"));
+    }
+
     @GetMapping("/analyze")
     public ResponseEntity<?> analyze(@RequestParam String airport) {
         String icao = airport.trim().toUpperCase();
