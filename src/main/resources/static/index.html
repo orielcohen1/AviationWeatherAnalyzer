@@ -90,7 +90,8 @@
         .search-box input::placeholder { color: #2a4060; letter-spacing: 1px; }
         .search-box input:focus { border-color: #3b82f6; }
 
-        .search-box button {
+        .search-box button,
+        .route-search-box button {
             padding: 0.85rem 1.6rem;
             background: #2563eb;
             color: #fff;
@@ -102,9 +103,12 @@
             transition: background 0.2s, transform 0.1s;
             white-space: nowrap;
         }
-        .search-box button:hover   { background: #1d4ed8; }
-        .search-box button:active  { transform: scale(0.97); }
-        .search-box button:disabled { background: #1a3050; cursor: not-allowed; }
+        .search-box button:hover,
+        .route-search-box button:hover    { background: #1d4ed8; }
+        .search-box button:active,
+        .route-search-box button:active   { transform: scale(0.97); }
+        .search-box button:disabled,
+        .route-search-box button:disabled { background: #1a3050; cursor: not-allowed; }
 
         .hint { color: #2a4060; font-size: 0.78rem; margin-top: 0.5rem; }
 
