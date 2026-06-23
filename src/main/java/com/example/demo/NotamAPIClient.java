@@ -5,19 +5,30 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NotamAPIClient {
 
+    public static String fetchNotamsForAirports(List<String> icaoCodes) {
+        if (icaoCodes == null || icaoCodes.isEmpty()) return "No airports specified.";
+        return fetchFromFaa(String.join(",", icaoCodes));
+    }
+
     public static String fetchRawNotams(String icaoCode) {
+        return fetchFromFaa(icaoCode);
+    }
+
+    private static String fetchFromFaa(String designators) {
         try {
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
 
-            String formBody = "searchType=0&designatorsForLocation=" + icaoCode
+            String formBody = "searchType=0&designatorsForLocation=" + designators
                     + "&actionType=notamRetrievalByICAOs&reportType=RAW&formatType=DOMESTIC";
+            String icaoCode = designators; // keep for error messages
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://notams.aim.faa.gov/notamSearch/search"))

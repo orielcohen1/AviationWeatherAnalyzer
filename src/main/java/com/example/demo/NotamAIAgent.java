@@ -102,6 +102,62 @@ public class NotamAIAgent {
         }
     }
 
+    public static String interpretRoute(String from, String to,
+                                        java.util.List<String> enRoute, String rawNotams) {
+        if (rawNotams == null || rawNotams.isBlank() || rawNotams.startsWith("No active")) {
+            return "No en-route NOTAMs found for the airports along the route from " + from + " to " + to + ".";
+        }
+
+        String airports = enRoute.isEmpty() ? "none identified" : String.join(", ", enRoute);
+
+        String prompt = "You are an aviation safety expert providing an en-route NOTAM briefing "
+                + "for a flight from " + from + " to " + to + ". "
+                + "The route passes through these airports: " + airports + ". "
+                + "Summarize the NOTAMs below in plain English. "
+                + "Group by airport, then within each airport: CRITICAL items first (closed runways, "
+                + "airspace restrictions, ILS/nav outages), then WARNINGS, then INFO. "
+                + "One sentence per NOTAM. If an airport has no significant issues, say so briefly.\\n\\n"
+                + "RAW NOTAMS:\\n"
+                + jsonEscape(rawNotams);
+
+        String jsonPayload = """
+                {
+                  "contents": [{
+                    "parts": [{
+                      "text": "%s"
+                    }]
+                  }]
+                }
+                """.formatted(prompt);
+
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            for (String model : MODELS) {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(apiUrl(model)))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                        .build();
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    Matcher matcher = Pattern.compile("\"text\":\\s*\"(.*?)\"(?:\\s*,|\\s*\\})", Pattern.DOTALL)
+                            .matcher(response.body());
+                    if (matcher.find()) {
+                        return matcher.group(1)
+                                .replace("\\n", "\n")
+                                .replace("\\\"", "\"")
+                                .replace("\\\\", "\\")
+                                .trim();
+                    }
+                }
+                if (response.statusCode() != 503 && response.statusCode() != 429) break;
+            }
+            return "AI interpretation unavailable — all models are currently busy. Try again in a moment.";
+        } catch (Exception e) {
+            return "Error contacting AI: " + e.getMessage();
+        }
+    }
+
     public static Notam analyzeNotam(String notamId, String rawNotam) {
         try {
             // 1. הפרומפט החדש: נוקשה ומדויק
