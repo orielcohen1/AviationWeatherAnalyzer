@@ -49,7 +49,9 @@ Without it, the app still works — AI endpoints just return a message saying th
 
 ## Deployment
 
-Includes a `Procfile` and `system.properties` for Heroku/Railway-style platforms (Java 22 buildpack, `$PORT` support).
+Live at [aviationweatheranalyzer.onrender.com](https://aviationweatheranalyzer.onrender.com) (Render free tier — spins down after inactivity, first request can take ~50s to wake up).
+
+Deployed via the included `Dockerfile` (Render has no native Java buildpack). Also includes a `Procfile` and `system.properties` for Heroku/Railway-style platforms (Java 22 buildpack, `$PORT` support).
 
 ## Project structure
 
